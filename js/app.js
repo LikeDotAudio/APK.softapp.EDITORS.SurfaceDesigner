@@ -1,33 +1,45 @@
 // Part of the APK.audio project — http://APK.audio — made by Anthony Kuzub
 // MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
 
-import { BlockBridge } from './blockBridge.js';
 import { SurfaceModel, FORM_FACTORS, CONTROL_TYPES } from './surfaceModel.js';
 import { renderSurfaceFaceplateSvg } from './surfaceSvg.js';
+import { connectSurfaceHost, blockMeta } from './surfaceHost.js';
+import { showDiscovered, loadDiscoveredConfig } from './discoveredPanel.js';
 
-let model = new SurfaceModel();
+const S = window.APKSoftapp;
+const esc = S ? S.esc : (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const state = { model: new SurfaceModel() };
+let model = state.model;
 
-const bridge = new BlockBridge({
-  name: 'Surface Designer',
-  type: 'surfacedesigner',
-  defaultBlock: model.toJSON(),
-  onBlockLoaded: (block) => {
-    if (block) {
-      model = new SurfaceModel(block);
-      renderAll();
-    }
+const host = S ? connectSurfaceHost(S, state, {
+  onLoaded: (m, meta) => {
+    model = m;
+    const tag = document.getElementById('block-tag');
+    if (tag && (meta.title || meta.blockName)) tag.textContent = meta.title || meta.blockName;
+    renderAll();
   },
-});
+}) : null;
+
+/** Replace the model from a local file (not from the CAD). */
+function loadLocal(next) {
+  model = state.model = next;
+  changed();
+  renderAll();
+}
+
+function changed() {
+  if (host) host.changed(model.toJSON());
+}
 
 function renderPalette() {
   const container = document.getElementById('palette-controls');
   if (!container) return;
 
   container.innerHTML = Object.entries(CONTROL_TYPES).map(([key, def]) => `
-    <button class="btn btn-secondary btn-control-add" data-control-kind="${key}" style="justify-content: flex-start; text-align: left; padding: 7px 10px;">
+    <button class="btn btn-secondary btn-control-add" data-control-kind="${esc(key)}" style="justify-content: flex-start; text-align: left; padding: 7px 10px;">
       <span style="font-size: 15px; margin-right: 6px;">${def.icon}</span>
       <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-        <div style="font-weight: 600; font-size: 11px;">${def.label}</div>
+        <div style="font-weight: 600; font-size: 11px;">${esc(def.label)}</div>
         <div style="font-size: 9px; opacity: 0.7; font-family: var(--font-mono);">${def.widthCols}x${def.heightRows} grid</div>
       </div>
     </button>
@@ -38,7 +50,7 @@ function renderPalette() {
       const kind = btn.getAttribute('data-control-kind');
       const newEl = model.addElement(kind);
       model.selectedElementId = newEl.id;
-      bridge.notifyChanged();
+      changed();
       renderAll();
     });
   });
@@ -61,7 +73,7 @@ function renderInspector() {
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid var(--osc-border-default); padding-bottom: 8px;">
         <div style="display: flex; align-items: center; gap: 6px;">
           <span style="font-size: 16px;">${def.icon}</span>
-          <span style="font-weight: 700; color: var(--osc-text-primary); font-size: 13px;">${el.label}</span>
+          <span style="font-weight: 700; color: var(--osc-text-primary); font-size: 13px;">${esc(el.label)}</span>
         </div>
         <button class="btn btn-secondary btn-sm" id="btn-delete-element" style="color: var(--osc-status-danger);">🗑️ Delete</button>
       </div>
@@ -69,7 +81,7 @@ function renderInspector() {
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <div>
           <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">CONTROL LABEL / CAPTION</label>
-          <input type="text" class="input" id="inp-label" value="${el.label}">
+          <input type="text" class="input" id="inp-label" value="${esc(el.label)}">
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
@@ -96,14 +108,14 @@ function renderInspector() {
 
         <div>
           <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">LED / ACCENT COLOR</label>
-          <input type="color" class="input" id="inp-color" value="${el.color || '#4A9EFF'}" style="height: 36px; padding: 2px;">
+          <input type="color" class="input" id="inp-color" value="${esc(el.color || '#4A9EFF')}" style="height: 36px; padding: 2px;">
         </div>
       </div>
     `;
 
     document.getElementById('btn-delete-element')?.addEventListener('click', () => {
       model.deleteElement(el.id);
-      bridge.notifyChanged();
+      changed();
       renderAll();
     });
 
@@ -111,7 +123,7 @@ function renderInspector() {
       document.getElementById(id)?.addEventListener('input', (e) => {
         const val = isNum ? parseInt(e.target.value, 10) || 0 : e.target.value;
         model.updateElement(el.id, { [prop]: val });
-        bridge.notifyChanged();
+        changed();
         renderSvg();
       });
     };
@@ -172,12 +184,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const selFF = document.getElementById('sel-form-factor');
   if (selFF) {
     selFF.innerHTML = Object.entries(FORM_FACTORS).map(([key, def]) => `
-      <option value="${key}" ${model.formFactor === key ? 'selected' : ''}>${def.label}</option>
+      <option value="${esc(key)}" ${model.formFactor === key ? 'selected' : ''}>${esc(def.label)}</option>
     `).join('');
 
     selFF.addEventListener('change', (e) => {
       model.setFormFactor(e.target.value);
-      bridge.notifyChanged();
+      changed();
       renderAll();
     });
   }
@@ -193,9 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.onload = (event) => {
         try {
           const parsed = JSON.parse(event.target.result);
-          model = new SurfaceModel(parsed);
-          bridge.loadBlock(model.toJSON(), { filename: file.name });
-          renderAll();
+          loadLocal(new SurfaceModel(parsed));
         } catch (err) {
           alert('Failed to parse surface file: ' + err.message);
         }
@@ -206,19 +216,31 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('btn-discovered')?.addEventListener('click', async () => {
-    const project = await bridge.fetchDiscoveredProject();
-    if (project) {
-      alert(`Discovered Project: ${project.project_name || 'Control Surfaces'}\nControls: ${model.elements.length}`);
-    } else {
-      alert('Connecting to live discovery bus...');
-    }
+    const panel = document.getElementById('discovered-panel');
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    if (panel.hidden || panel.dataset.started) return;
+    panel.dataset.started = '1';
+    const cfg = await loadDiscoveredConfig();
+    await showDiscovered(document.getElementById('discovered-table'), {
+      S, T: window.APKTable,
+      statusEl: document.getElementById('discovered-status'),
+      kinds: Array.isArray(cfg.kinds) ? cfg.kinds : [],
+      tableId: 'surface-discovered',
+      pickLabel: 'Bind',
+      onPick: (thing) => {
+        if (model.bindDevice(thing)) { changed(); renderAll(); }
+      },
+    });
   });
 
   document.getElementById('btn-save-block')?.addEventListener('click', () => {
-    bridge.saveBlock(model.toJSON(), { filename: model.name.toLowerCase().replace(/\s+/g, '_') });
+    const how = host ? host.save(model.toJSON(), blockMeta(model)) : '';
+    const tag = document.getElementById('block-tag');
+    if (tag && how) tag.textContent = how === 'host' ? 'SAVED TO THE CAD' : 'DOWNLOADED .JSON';
   });
 
   document.getElementById('btn-close')?.addEventListener('click', () => {
-    bridge.close();
+    if (host) host.close();
   });
 });

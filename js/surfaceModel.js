@@ -6,7 +6,8 @@ export const FORM_FACTORS = {
   GANG_2: { label: '2-Gang Wall Plate', width_mm: 115, height_mm: 115, cols: 4, rows: 4 },
   GANG_3: { label: '3-Gang Wall Plate', width_mm: 160, height_mm: 115, cols: 6, rows: 4 },
   TABLETOP_8: { label: 'Tabletop 8-Button Station', width_mm: 140, height_mm: 90, cols: 4, rows: 2 },
-  RACK_1U: { label: '1U Rack Faceplate', width_mm: 483, height_mm: 44, cols: 16, rows: 2 },
+  // EIA-310: a 482.6 mm (19 in) panel, 44.45 mm per U, two 9.5 x 7 mm horizontal slots per ear (as EDITORS.Device draws it).
+  RACK_1U: { label: '1U Rack Faceplate', width_mm: 482.6, height_mm: 44.45, cols: 16, rows: 2, rackUnits: 1 },
 };
 
 export const CONTROL_TYPES = {
@@ -23,6 +24,8 @@ export class SurfaceModel {
     this.name = initialData?.name || 'Wall Station Controller';
     this.formFactor = initialData?.formFactor || 'GANG_2';
     this.plateColor = initialData?.plateColor || '#18181b'; // Black / Dark anodized aluminum
+    // The discovered surface this block describes: its MAC or serial (never its IP), '' when unbound.
+    this.deviceId = initialData?.deviceId || '';
 
     const ff = FORM_FACTORS[this.formFactor] || FORM_FACTORS.GANG_2;
     this.cols = initialData?.cols || ff.cols;
@@ -86,6 +89,15 @@ export class SurfaceModel {
     return false;
   }
 
+  /** Bind this block to a discovered surface (APKSoftapp thing): identity is its MAC / serial. */
+  bindDevice(thing) {
+    const id = thing && (thing.mac || thing.serial || thing.agent);
+    if (!id) return false;
+    this.deviceId = id;
+    if (thing.name) this.name = thing.name;
+    return true;
+  }
+
   toJSON() {
     return {
       type: 'surfacedesigner',
@@ -93,6 +105,7 @@ export class SurfaceModel {
       name: this.name,
       formFactor: this.formFactor,
       plateColor: this.plateColor,
+      deviceId: this.deviceId,
       cols: this.cols,
       rows: this.rows,
       elements: this.elements,
