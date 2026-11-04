@@ -22,7 +22,7 @@ export class SurfaceModel {
     this.id = initialData?.id || `surf_${Date.now()}`;
     this.name = initialData?.name || 'Wall Station Controller';
     this.formFactor = initialData?.formFactor || 'GANG_2';
-    this.plateColor = initialData?.plateColor || '#121A2F'; // Black / Dark anodized aluminum
+    this.plateColor = initialData?.plateColor || '#18181b'; // Black / Dark anodized aluminum
 
     const ff = FORM_FACTORS[this.formFactor] || FORM_FACTORS.GANG_2;
     this.cols = initialData?.cols || ff.cols;
