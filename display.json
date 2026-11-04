@@ -1,0 +1,8 @@
+{
+  "name": "Surface Designer",
+  "icon": "🎛️",
+  "group": "Design",
+  "description": "Physical control surface and wall plate layout designer with buttons, rotary encoders, and OLEDs",
+  "entrypoint": "index.html",
+  "blockTypes": ["surfacedesigner", "surface", "wallplate"]
+}
