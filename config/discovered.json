@@ -1,4 +1,8 @@
 {
   "_about": "What the Discovered panel lists: things on the bus whose kinds (a protocol that saw them, the scanner's kind segment or their device_class) contain one of these words, case-insensitive: the control surfaces this designer lays out. Tunables only: source holds no device list. An empty list shows everything.",
-  "kinds": ["midi", "hid", "surface"]
+  "_measured": "Bench broker 2026-11-04 (ROAD-3502). 'midi' confirmed: protocol midi, kinds Input / Output, device_class 'MIDI Interface' (e.g. midi/Device/Input/Dev1/model 'Arturia MicroLab:Arturia MicroLab  28:0'). 'hid' is PLUGIN.SPACENAVIGATOR's BareMetal target (config.ini target = HID, read as an agent kind), but the plugin is 'unavailable' on the bench (no device plugged), so nothing matches it today. 'surface' was dropped: no plugin publishes a protocol, kind or device_class with that word.",
+  "kinds": [
+    "midi",
+    "hid"
+  ]
 }
