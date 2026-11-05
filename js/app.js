@@ -4,7 +4,6 @@
 import { SurfaceModel, FORM_FACTORS, CONTROL_TYPES } from './surfaceModel.js';
 import { renderSurfaceFaceplateSvg } from './surfaceSvg.js';
 import { connectSurfaceHost, blockMeta } from './surfaceHost.js';
-import { showDiscovered, loadDiscoveredConfig } from './discoveredPanel.js';
 
 const S = window.APKSoftapp;
 const esc = S ? S.esc : (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -178,6 +177,27 @@ function renderAll() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (S) S.describe({
+    name: 'Surface Designer',
+    does: 'Lays out the faceplate of a control surface or wall station: pick a form factor, place buttons, encoders, OLEDs and other controls on its grid, and bind it to a discovered surface.',
+    inputs: [
+      { name: 'Surface block', from: 'the CAD drawing when opened from the CAD', kind: 'cad' },
+      { name: 'Block file', from: 'a .json saved by this editor, picked with Open Block', kind: 'file' },
+      { name: 'Discovered', from: 'what the bus has discovered; which kinds show is config/discovered.json', kind: 'bus' },
+    ],
+    outputs: [
+      { name: 'Surface block', to: 'the CAD drawing on Save & Return, or a .json download when standalone', kind: 'file' },
+    ],
+    controls: [
+      { name: 'Form factor', how: 'Pick it in the form factor list (controls outside the new grid are dropped)' },
+      { name: 'Add a control', how: 'Click a control type in the palette' },
+      { name: 'Select a control', how: 'Click it on the faceplate; click empty canvas to deselect' },
+      { name: 'Edit a control', how: 'Inspector: label, column, row, span width / height, LED colour; Delete removes it' },
+      { name: 'Bind to a discovered surface', how: '⚡ Discovered, then Bind on its row' },
+      { name: 'Save & Return / Close', how: 'Top-bar buttons' },
+    ],
+    problems: ['file_unreadable', 'bad_json', 'bad_input', 'bus_missing'],
+  });
   renderAll();
 
   // Form factor selector
@@ -202,14 +222,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
+      const again = () => input.click();
       reader.onload = (event) => {
+        let parsed;
         try {
-          const parsed = JSON.parse(event.target.result);
-          loadLocal(new SurfaceModel(parsed));
+          parsed = JSON.parse(event.target.result);
         } catch (err) {
-          alert('Failed to parse surface file: ' + err.message);
+          if (S) S.showProblem('bad_json', { subject: file.name, detail: err.message, onRetry: again });
+          return;
         }
+        if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.elements)) {
+          if (S) S.showProblem('bad_input', {
+            subject: file.name,
+            detail: 'This is not a surface block: it has no "elements" list of controls.',
+            fix: ['Open a .json saved by this editor (Save & Return when standalone downloads one).'],
+            onRetry: again,
+          });
+          return;
+        }
+        loadLocal(new SurfaceModel(parsed));
       };
+      reader.onerror = () => S && S.showProblem('file_unreadable', { subject: file.name, detail: reader.error && reader.error.message, onRetry: again });
       reader.readAsText(file);
     };
     input.click();
@@ -221,12 +254,12 @@ document.addEventListener('DOMContentLoaded', () => {
     panel.hidden = !panel.hidden;
     if (panel.hidden || panel.dataset.started) return;
     panel.dataset.started = '1';
-    const cfg = await loadDiscoveredConfig();
-    await showDiscovered(document.getElementById('discovered-table'), {
-      S, T: window.APKTable,
-      statusEl: document.getElementById('discovered-status'),
-      kinds: Array.isArray(cfg.kinds) ? cfg.kinds : [],
-      tableId: 'surface-discovered',
+    // the Discovered panel is the shared client's (ROAD-3502): kinds in config/discovered.json
+    if (!window.APKSoftapp) return;
+    await window.APKSoftapp.discoveredPanel(document.getElementById('discovered-table'), {
+      status: document.getElementById('discovered-status'),
+      configUrl: './config/discovered.json',
+      id: 'surface-discovered',
       pickLabel: 'Bind',
       onPick: (thing) => {
         if (model.bindDevice(thing)) { changed(); renderAll(); }
