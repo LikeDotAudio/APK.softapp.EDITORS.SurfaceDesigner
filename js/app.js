@@ -4,6 +4,7 @@
 import { SurfaceModel, FORM_FACTORS, CONTROL_TYPES } from './surfaceModel.js';
 import { renderSurfaceFaceplateSvg } from './surfaceSvg.js';
 import { connectSurfaceHost, blockMeta } from './surfaceHost.js';
+import { surfaceToIfc } from './surfaceIfc.js';
 
 const S = window.APKSoftapp;
 const esc = S ? S.esc : (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -186,7 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
       { name: 'Discovered', from: 'what the bus has discovered; which kinds show is config/discovered.json', kind: 'bus' },
     ],
     outputs: [
-      { name: 'Surface block', to: 'the CAD drawing on Save & Return, or a .json download when standalone', kind: 'file' },
+      { name: 'Surface block', to: 'the CAD drawing on Save & Return; standalone, <name>.json beside its .ifc twin (Save Model)', kind: 'file' },
+      { name: 'IFC twin', to: '<name>.ifc (IFC4X3_ADD2) with the .json when standalone: the station an IfcUnitaryControlElement CONTROLPANEL on one wall of one room (js/surfaceIfc.js)', kind: 'file' },
     ],
     controls: [
       { name: 'Form factor', how: 'Pick it in the form factor list (controls outside the new grid are dropped)' },
@@ -196,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { name: 'Bind to a discovered surface', how: '⚡ Discovered, then Bind on its row' },
       { name: 'Save & Return / Close', how: 'Top-bar buttons' },
     ],
-    problems: ['file_unreadable', 'bad_json', 'bad_input', 'bus_missing'],
+    problems: ['file_unreadable', 'bad_json', 'bad_input', 'bus_missing', 'save_failed'],
   });
   renderAll();
 
@@ -267,11 +269,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  document.getElementById('btn-save-block')?.addEventListener('click', () => {
-    const how = host ? host.save(model.toJSON(), blockMeta(model)) : '';
+  // In the CAD: the block back to the drawing. Standalone: Save Model — the .json AND its .ifc twin, both or neither.
+  const saveBlock = async () => {
+    const block = model.toJSON();
+    const meta = blockMeta(model);
+    let how = '';
+    if (host && (host.embedded || !S || typeof S.saveModel !== 'function')) how = host.save(block, meta);
+    else if (S && typeof S.saveModel === 'function') {
+      const r = await S.saveModel(block, { name: meta.filename, toIfc: () => surfaceToIfc(model) });
+      if (r.ok) how = 'model';
+      else if (!r.cancelled) S.showProblem(r.problem || 'save_failed', { onRetry: saveBlock });
+    }
     const tag = document.getElementById('block-tag');
-    if (tag && how) tag.textContent = how === 'host' ? 'SAVED TO THE CAD' : 'DOWNLOADED .JSON';
-  });
+    if (tag && how) tag.textContent = how === 'host' ? 'SAVED TO THE CAD' : how === 'model' ? 'SAVED .JSON + .IFC' : 'DOWNLOADED .JSON';
+  };
+  document.getElementById('btn-save-block')?.addEventListener('click', () => { saveBlock(); });
 
   document.getElementById('btn-close')?.addEventListener('click', () => {
     if (host) host.close();
