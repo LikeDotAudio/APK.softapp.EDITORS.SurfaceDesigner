@@ -3,8 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SurfaceModel } from '../js/surfaceModel.js';
-import { surfaceToIfc, layoutHash } from '../js/surfaceIfc.js';
+import { FORM_FACTORS, SurfaceModel } from '../js/surfaceModel.js';
+import { surfaceToIfc, layoutHash, stationEntities, StepWriter } from '../js/surfaceIfc.js';
 import { parseStep, getPsets, schemaOf, ifcGuid } from '../vendor/apk-contracts/apk-ifc.js';
 import { buildBundle, BUNDLE } from '../scripts/vendor-ifc.mjs';
 
@@ -72,4 +72,26 @@ test('the same station writes the same bytes; no address is in it', () => {
 test('an unknown plate depth writes no body rather than inventing one', () => {
   const text = surfaceToIfc(station(), { at: { alongMm: 100, heightMm: 1200 } });
   assert.equal(of(parseStep(text), 'IFCBOUNDINGBOX').length, 0);
+});
+
+test('the station is typed by its BIM part (ROAD-3598 answer 7): GlobalId part/<id>, Tag the part id, APK_Part.PartId', () => {
+  const f = parseStep(file());
+  const [ty] = of(f, 'IFCUNITARYCONTROLELEMENTTYPE');
+  const pid = FORM_FACTORS.GANG_2.part;
+  assert.equal(pid, 'generic/wall-station-gang-2');
+  assert.deepEqual([ty.args[0], ty.args[2], ty.args[7], ty.args[8]], [ifcGuid('part', pid), '2-Gang Wall Plate', pid, 'GANG_2']);
+  const [set] = ty.args[5].map((r) => f.byId.get(r.id));
+  assert.equal(set.args[2], 'APK_Part');
+  assert.equal(f.byId.get(set.args[4][0].id).args[2].value, pid);
+  // every form factor names a part
+  for (const [k, ff] of Object.entries(FORM_FACTORS)) assert.match(ff.part ?? '', /^generic\/[a-z0-9-]+$/, k);
+});
+
+test('two stations of one form factor in one model share its one part type', () => {
+  const W = new StepWriter();
+  const ctx = { space: null, wall: W.add('IFCWALL', []), wallPlacement: null, key: 'room' };
+  const a = stationEntities(W, new SurfaceModel({ id: 'a', formFactor: 'GANG_1' }), ctx);
+  const b = stationEntities(W, new SurfaceModel({ id: 'b', formFactor: 'GANG_1' }), ctx);
+  assert.notEqual(a.id, b.id);
+  assert.equal(W.entities.filter((e) => e.type === 'IFCUNITARYCONTROLELEMENTTYPE').length, 1);
 });

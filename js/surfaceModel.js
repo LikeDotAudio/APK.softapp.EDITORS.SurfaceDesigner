@@ -1,13 +1,16 @@
 // Part of the APK.audio project — http://APK.audio — made by Anthony Kuzub
 // MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
 
+// Each form factor is a BIM library part (ROAD-3598 answer 7): `part` is its id in DATABASE.server.BIM
+// (SRC/importers/import_control_surfaces.py writes it from this table), and the station's IFC type is that
+// part's (GlobalId part/<id>, IfcUnitaryControlElementType CONTROLPANEL — surfaceIfc.js).
 export const FORM_FACTORS = {
-  GANG_1: { label: '1-Gang Decora Wall Plate', width_mm: 70, height_mm: 115, cols: 2, rows: 4 },
-  GANG_2: { label: '2-Gang Wall Plate', width_mm: 115, height_mm: 115, cols: 4, rows: 4 },
-  GANG_3: { label: '3-Gang Wall Plate', width_mm: 160, height_mm: 115, cols: 6, rows: 4 },
-  TABLETOP_8: { label: 'Tabletop 8-Button Station', width_mm: 140, height_mm: 90, cols: 4, rows: 2 },
+  GANG_1: { label: '1-Gang Decora Wall Plate', width_mm: 70, height_mm: 115, cols: 2, rows: 4, part: 'generic/wall-station-gang-1' },
+  GANG_2: { label: '2-Gang Wall Plate', width_mm: 115, height_mm: 115, cols: 4, rows: 4, part: 'generic/wall-station-gang-2' },
+  GANG_3: { label: '3-Gang Wall Plate', width_mm: 160, height_mm: 115, cols: 6, rows: 4, part: 'generic/wall-station-gang-3' },
+  TABLETOP_8: { label: 'Tabletop 8-Button Station', width_mm: 140, height_mm: 90, cols: 4, rows: 2, part: 'generic/control-surface-tabletop-8' },
   // EIA-310: a 482.6 mm (19 in) panel, 44.45 mm per U, two 9.5 x 7 mm horizontal slots per ear (as EDITORS.Device draws it).
-  RACK_1U: { label: '1U Rack Faceplate', width_mm: 482.6, height_mm: 44.45, cols: 16, rows: 2, rackUnits: 1 },
+  RACK_1U: { label: '1U Rack Faceplate', width_mm: 482.6, height_mm: 44.45, cols: 16, rows: 2, rackUnits: 1, part: 'generic/control-surface-rack-1u' },
 };
 
 export const CONTROL_TYPES = {

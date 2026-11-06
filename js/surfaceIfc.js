@@ -5,8 +5,12 @@
    The SurfaceModel (buttons, encoders, faders on a GANG_1..3 / TABLETOP_8 / RACK_1U plate) is the
    native, stored form. In an IFC4X3_ADD2 room it is:
 
-     IfcUnitaryControlElementType  PredefinedType CONTROLPANEL (verified in IfcUnitaryControlElementTypeEnum),
-                                   one per form factor, Name = the form factor's label
+     IfcUnitaryControlElementType  PredefinedType CONTROLPANEL (verified in IfcUnitaryControlElementTypeEnum):
+                                   the form factor's BIM PART (ROAD-3598 answer 7; FORM_FACTORS[key].part,
+                                   DATABASE.server.BIM generic/wall-station-gang-2 ...): GlobalId part/<id>,
+                                   the GlobalId the library's own .ifc twin gives it, Name = the form factor's
+                                   label, Tag = the part id, ElementType = the form factor, APK_Part.PartId;
+                                   one per part in a model, however many stations it types
      IfcUnitaryControlElement      the station: typed by it, Tag = surface id, its placement on the wall
                                    (x along the wall, mounting height, mm), its Body an IfcBoundingBox of
                                    width_mm x depth x height_mm when the plate depth is known
@@ -73,6 +77,27 @@ export class StepWriter {
   }
 }
 
+/** The form factor's part type in W, written once per part (W.partTypes). A form factor with no part
+    keeps the type it always had (GlobalId of key/surface-type/<formFactor>). */
+function partType(W, ff, formFactor, key) {
+  W.partTypes ??= new Map();
+  const pid = ff.part || null;
+  const k = pid || `form:${formFactor}`;
+  if (!W.partTypes.has(k)) {
+    let sets = null;
+    if (pid) {
+      const gid = (...roles) => ifcGuid('part', pid, ...roles);
+      const prop = W.add('IFCPROPERTYSINGLEVALUE', ['PartId', null, ident(pid), null]);
+      sets = [W.add('IFCPROPERTYSET', [gid('pset', 'APK_Part'), null, 'APK_Part', null, [prop]])];
+    }
+    W.partTypes.set(k, W.add('IFCUNITARYCONTROLELEMENTTYPE', [
+      pid ? ifcGuid('part', pid) : ifcGuid(key, 'surface-type', formFactor), null, ff.label, null, null, sets, null,
+      pid || formFactor, pid ? formFactor : null, enumv('CONTROLPANEL'),
+    ]));
+  }
+  return W.partTypes.get(k);
+}
+
 /** The station's entities in a model W already holds a space and a wall for.
     ctx = {space, wall, wallPlacement, body (the 'Body' subcontext), key (GlobalId namespace)}
     at  = {alongMm, heightMm, depthMm?, weightKg?, layoutUrl?}. Answers the station's reference. */
@@ -80,9 +105,7 @@ export function stationEntities(W, surface, ctx, at = {}) {
   const ff = FORM_FACTORS[surface.formFactor] || FORM_FACTORS.GANG_2;
   const key = ctx.key || 'surface';
   const g = (...roles) => ifcGuid(key, 'surface', surface.id, ...roles);
-  const type = W.add('IFCUNITARYCONTROLELEMENTTYPE', [
-    ifcGuid(key, 'surface-type', surface.formFactor), null, ff.label, null, null, null, null, surface.formFactor, null, enumv('CONTROLPANEL'),
-  ]);
+  const type = partType(W, ff, surface.formFactor, key);
   // the plate sits on the wall's face: its x along the wall, its bottom at the mounting height (mm)
   const place = W.placement(ctx.wallPlacement, [Number(at.alongMm) || 0, 0, Number(at.heightMm) || 0]);
   let shape = null;
