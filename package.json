@@ -1,6 +1,6 @@
 {
   "name": "editors-surface-designer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "description": "Physical control surface and wall plate layout designer with buttons, rotary encoders, and OLEDs",
   "scripts": {
