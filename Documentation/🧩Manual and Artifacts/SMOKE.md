@@ -4,13 +4,13 @@ Is `EDITORS.SurfaceDesigner` deployed? Written by `.apk.scripts/smoke.py` from t
 
 ← [Wiki home](../README.md)
 
-**❌ FAIL** — 1/2 checks, since 2026-11-12 00:16 EST
+**✅ PASS** — 2/2 checks, since 2026-11-12 00:27 EST
 
 | Check | Target | Result | Detail |
 |---|---|---|---|
-| pushed | [APK.softapp.EDITORS.SurfaceDesigner](https://github.com/LikeDotAudio/APK.softapp.EDITORS.SurfaceDesigner.git) | ❌ | 1 commit(s) not pushed |
+| pushed | [APK.softapp.EDITORS.SurfaceDesigner](https://github.com/LikeDotAudio/APK.softapp.EDITORS.SurfaceDesigner.git) | ✅ | HEAD is on origin |
 | web | [index.html](https://apk.audio/APK%3ASoftapps/EDITORS/EDITORS.SurfaceDesigner/index.html) | ✅ | HTTP 200 |
 
 Re-run: `python3 .apk.scripts/smoke.py PODS/POD.THIN/Softapps/EDITORS/EDITORS.SurfaceDesigner`
 
-<!-- smoke:sig db09261e0f75 since 2026-11-12 00:16 EST -->
+<!-- smoke:sig dbf75d33f69a since 2026-11-12 00:27 EST -->
